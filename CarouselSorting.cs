@@ -78,7 +78,7 @@ class Program
             "searchLineSorting=\"sorting_criteria\":",
             "replacementLineSorting=\"sorting_criteria\": [\"-premium\", \"level\", \"type\", \"nation\"],",
             "searchLineType=\"types_order\":",
-            "replacementLineType=\"types_order\": [\"heavyTank\", \"mediumTank\", \"AT-SPG\", \"lightTank\", \"SPG\"]"
+            "replacementLineType=\"types_order\": [\"heavyTank\", \"mediumTank\", \"lightTank\", \"AT-SPG\", \"SPG\"]"
         };
 
         File.WriteAllLines(filePath, lines);

@@ -1,3 +1,6 @@
+// dotnet publish -r win10-x64 -c Release -o ./publish --self-contained=false /p:PublishSingleFile=true
+using System.Text;
+
 class Program
 {
     static void Main()
@@ -8,17 +11,20 @@ class Program
         if (!File.Exists(configFilePath))
         {
             CreateConfigFile(configFilePath);
+            
+            // Exits the application with status code 0 (success)
+            Environment.Exit(0);
         }
 
-        string filePath = ReadConfigValue(configFilePath, "filePath") ?? string.Empty;
-        string searchLineSorting = ReadConfigValue(configFilePath, "searchLineSorting") ?? string.Empty;
-        string replacementLineSorting = ReadConfigValue(configFilePath, "replacementLineSorting") ?? string.Empty;
-        string searchLineType = ReadConfigValue(configFilePath, "searchLineType") ?? string.Empty;
-        string replacementLineType = ReadConfigValue(configFilePath, "replacementLineType") ?? string.Empty;
+        string searchSort = "\"sorting_criteria\": ";
+        string searchType = "\"types_order\": ";
+        string filePath = ReadConfigValue(configFilePath, "carouselPath") ?? string.Empty;
+        string repSort = searchSort + ReadConfigValue(configFilePath, "TanksSorting") ?? string.Empty;
+        string repType = searchType + ReadConfigValue(configFilePath, "TypesSorting") ?? string.Empty;
 
-        if (string.IsNullOrEmpty(filePath) || string.IsNullOrEmpty(searchLineSorting) || string.IsNullOrEmpty(replacementLineSorting) || string.IsNullOrEmpty(searchLineType) || string.IsNullOrEmpty(replacementLineType))
+        if (string.IsNullOrEmpty(filePath) || string.IsNullOrEmpty(searchSort) || string.IsNullOrEmpty(repSort) || string.IsNullOrEmpty(searchType) || string.IsNullOrEmpty(repType))
         {
-            Console.WriteLine("Failed to read the config file or one or more config values are not provided.");
+            Console.WriteLine("Failed to read the config file. One or more config values may be incorrect or are not provided.");
             Console.ReadLine();
             return;
         }
@@ -26,35 +32,33 @@ class Program
         try
         {
             string[] lines = File.ReadAllLines(filePath);
-            bool lineReplacedSorting = false;
-            bool lineReplacedType = false;
+            bool flagRepSort = false;
+            bool flagRepType = false;
 
             for (int i = 0; i < lines.Length; i++)
             {
-                if (!lineReplacedSorting && lines[i].Contains(searchLineSorting))
+                if (!flagRepSort && lines[i].Contains(searchSort))
                 {
-                    lines[i] = replacementLineSorting;
-                    lineReplacedSorting = true;
+                    int countLeadingSpaces = lines[i].TakeWhile(Char.IsWhiteSpace).Count();
+                    lines[i] = repSort.PadLeft(repSort.Length + countLeadingSpaces);
+                    flagRepSort = true;
                 }
 
-                if (!lineReplacedType && lines[i].Contains(searchLineType))
+                if (!flagRepType && lines[i].Contains(searchType))
                 {
-                    lines[i] = replacementLineType;
-                    lineReplacedType = true;
+                    int countLeadingSpaces = lines[i].TakeWhile(Char.IsWhiteSpace).Count();
+                    lines[i] = repType.PadLeft(repType.Length + countLeadingSpaces);
+                    flagRepType = true;
                 }
-
-                if (lineReplacedSorting && lineReplacedType)
-                    break;  // Assuming only one occurrence of each line
             }
-
-            if (lineReplacedSorting && lineReplacedType)
+            if (flagRepSort && flagRepType)
             {
                 File.WriteAllLines(filePath, lines);
-                Console.WriteLine("Replacement completed successfully!");
+                Console.WriteLine("Both replacements completed successfully!");
             }
             else
             {
-                Console.WriteLine("One or more of the lines to replace were not found in the file.");
+                Console.WriteLine("One or more of the lines could not be replaced.");
             }
         }
         catch (IOException e)
@@ -74,11 +78,9 @@ class Program
     static void CreateConfigFile(string filePath)
     {
         string[] lines = {
-            "filePath=C:\\Games\\World_of_Tanks_NA\\res_mods\\configs\\xvm\\Aslain\\carousel.xc",
-            "searchLineSorting=\"sorting_criteria\":",
-            "replacementLineSorting=\"sorting_criteria\": [\"-premium\", \"level\", \"type\", \"nation\"],",
-            "searchLineType=\"types_order\":",
-            "replacementLineType=\"types_order\": [\"heavyTank\", \"mediumTank\", \"lightTank\", \"AT-SPG\", \"SPG\"]"
+            "carouselPath=C:\\Games\\World_of_Tanks_NA\\res_mods\\configs\\xvm\\Aslain\\carousel.xc",
+            "TanksSorting=-premium,level,type,nation",
+            "TypesSorting=heavyTank,mediumTank,AT-SPG,lightTank,SPG"
         };
 
         File.WriteAllLines(filePath, lines);
@@ -91,13 +93,18 @@ class Program
             try
             {
                 string[] lines = File.ReadAllLines(filePath);
-                foreach (string line in lines)
+                string prefix = configKey + "=";
+                string line = lines.FirstOrDefault(l => l.StartsWith(prefix)) ?? string.Empty;
+
+                if (line.Contains(','))
                 {
-                    if (line.StartsWith(configKey + "="))
-                    {
-                        return line[(configKey.Length + 1)..];  // Assuming the format is "key=value"
-                    }
+                    return GenerateSortingString(line[(prefix.Length)..]);
                 }
+                if (line != null)
+                {
+                    return line[(prefix.Length)..];
+                }
+                else { return string.Empty; }
             }
             catch (Exception e)
             {
@@ -107,5 +114,26 @@ class Program
         }
 
         return string.Empty;  // Return an empty string if the config file doesn't exist or the config value is not found
+    }
+
+    static string GenerateSortingString(string sortingString)
+    {
+        List<string> splitStringList = sortingString.Split(new[] { "," }, StringSplitOptions.None).ToList();
+        StringBuilder sb = new();
+        sb.Append('[');
+
+        for (int i = 0; i < splitStringList.Count; i++)
+        {
+            sb.Append('"').Append(splitStringList[i]).Append('"');
+
+            if (i < splitStringList.Count - 1)
+            {
+                sb.Append(", ");
+            }
+        }
+
+       sb.Append("],");
+
+        return sb.ToString();
     }
 }
